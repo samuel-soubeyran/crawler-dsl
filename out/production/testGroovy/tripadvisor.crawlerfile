@@ -1,0 +1,27 @@
+start { download "url" }
+download "url" recipe {
+    emit page to { parse "continent" }
+}
+
+parse "continent" recipe {
+    apply { cssSelector it, "a[href~=AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels]" }
+    apply { prepend it, "http://www.tripadvisor.com" }
+    emit(object([
+        name : { return "testname" },
+        hotels : {return "testHotels"}
+    ])) to { download "location_url" }
+}
+
+download "location_url" recipe {
+    emit page to { parse "continent" }
+}
+
+def cssSelector( input, selector)  {
+    println "cssSelector input " + input
+    "AllLocation-g123456-c123456-Hotels-Germany"
+}
+
+def prepend( input, value){
+    println "prepend input " + input
+    return value + input
+}
