@@ -4,16 +4,79 @@ download "url" recipe {
 }
 
 parse "continent" recipe {
-    apply { cssSelector it, "a[href~=AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels]" }
-    apply { prepend it, "http://www.tripadvisor.com" }
-    emit(object([
-        name : { return "testname" },
-        hotels : {return "testHotels"}
-    ])) to { download "location_url" }
+    cssSelector "a[href~=AllLocations-g\\d+-Places]"
+    attributeSelector "href"
+    prepend "http://www.tripadvisor.com"
+    emit link to { download "location" }
 }
 
-download "location_url" recipe {
-    emit page to { parse "continent" }
+download "location" recipe {
+    emit page to { parse "location" }
+}
+
+parse "location" recipe [{
+    cssSelector "a[href~=(AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels)"
+
+
+
+
+    attributeSelector "href"
+    prepend "http://www.tripadvisor.com"
+    emit link to { download "location" }
+    },{cssSelector "a[href~=(Hotel_Review-g\\d+-d\\d+-Reviews)"
+    attributeSelect "href"
+    prepend "http://www.tripadvisor.com"
+    emit link to  { download "property" }
+}]
+
+download "property" recipe {
+    emit page to {parse "property"}
+}
+
+parse "property" recipe {
+    apply { cssSelector it, "body" }
+    emit object fields([
+        city : {
+            textCssSelector "span[property=addressLocality]"
+            toFirstElement
+        },
+        country : {
+            textCssSelector "a[onClick*=Country] > span"
+            toFirstElement
+        },
+        continent : { 
+            apply { regexp it,  "Continent\\\\\",\\\\\"([\\w\\s]+)-"}
+            apply { toFirstElement it }
+        },
+        description : {
+            apply { textCssSelector it,  "a[onClick*=Country] > span"}
+            apply { toFirstElement it }
+        },
+        hotelId : {
+            apply { extractCrawledUrl it}
+            apply { regexp it,  "d(\\d+)"}
+            apply { toFirstElement it }            
+        },
+        marketName : {
+            apply { textCssSelector it, "b.rank ~ a" }
+            apply { toFirstElement it }            
+        },
+        phone : {
+            apply { phoneExtractor it }            
+            apply { toFirstElement it }            
+        },
+        highlights : {
+            apply { textCssSelector it, ".highlight" }
+        }
+    ])
+}
+
+def phoneExtractor (input) {
+
+}
+
+def textCssSelector (input, selector) {
+
 }
 
 def cssSelector( input, selector)  {

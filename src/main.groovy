@@ -1,6 +1,13 @@
 #!/usr/bin/env groovy
-
 import org.codehaus.groovy.control.CompilerConfiguration
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
+
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
+@Grapes( @Grab('org.jsoup:jsoup:1.6.1'))
 
 def cli = new CliBuilder()
 def options = cli.parse(args)
@@ -16,18 +23,42 @@ def crawlerStartInput = options.arguments().get(1)
 
 
 class Emitted {
+    Closure sendTo
+    public void to(Closure sendTo){
+        this.sendTo = sendTo
+    }
+    public Object build(Object input){
+        return input
+    }
+}
 
+class ObjectEmitted extends Emitted {
+    Map<Object, Closure> fields;
+
+    public Emitted fields(Map) {
+        this.fields = fields
+        return this
+    }
+
+    public Object build(Object input){
+        Map<Object, Object> res = new LinkedHashMap()
+        this.fields.each { k, v ->
+            res.put(k, v.call(input))
+        }
+        return res
+    }
 }
 
 class Emitter {
-    Closure sendTo
+    Emitted emitted
     Closure action = { return it }
-    Closure builder = { return it }
     Emitter nextEmitter
 
     public Object getValue(Object input){
-        Object output = builder(action(input))
-
+        Object output = action(input)
+        if(emitted != null){
+            output = emitted.build(output)
+        }
         if(nextEmitter != null){
             output = nextEmitter.getValue(output)
         }
@@ -47,19 +78,13 @@ abstract class Step {
     Emitter currentEmitter = null
     List<Emitter> outputs = new ArrayList<>()
 
-    public Map emit(Closure emitted){
-        [
-                to: { closure ->
-                    if(currentEmitter == null){
-                        currentEmitter = new Emitter()
-                    }
-                    currentEmitter.sendTo = closure
-                    currentEmitter.builder = emitted
-                    outputs.add(currentEmitter)
-                    currentEmitter = null
-                }
-        ]
-
+    public Emitted emit(Closure emittedFactory){
+        if(currentEmitter == null){
+            currentEmitter = new Emitter()
+        }
+        currentEmitter.emitted = emittedFactory()
+        outputs.add(currentEmitter)
+        return currentEmitter.emitted
     }
     public void recipe(Closure c){
         c.delegate = this
@@ -76,19 +101,19 @@ abstract class Step {
     }
 
 
-    public abstract Object exec(String s)
+    public abstract Object exec(Object s)
 }
 
 class Download extends Step {
 
-    public Object exec(String input){
+    public Object exec(Object input){
         println "downloading url " + input
         "aaaaaaabbbbbbbbccccccccdddddddddeeeeeeefffffffffff"
     }
 }
 
 class Parse extends Step {
-    public Object exec(String input){
+    public Object exec(Object input){
         println "parsing content " + input
         input
     }
@@ -99,17 +124,9 @@ abstract class Crawlerfile extends Script {
     LinkedHashMap<String, Object> parse = new LinkedHashMap<>()
 
     def getStartStepClosure = {}
-    def link = { return it }
-    def object = { dict -> {
-            obj ->
-                def res = [:]
-                dict.each {
-                    k, v -> res[k] = v(obj)
-                }
-                return res
-        }
-    }
-    def page = { return it }
+    def link = { return new Emitted() }
+    def page = { return new Emitted() }
+    def object = { return new ObjectEmitted() }
 
     public Step getStartStep(){
         return getStartStepClosure.call()
@@ -138,6 +155,63 @@ abstract class Crawlerfile extends Script {
     public Closure start(Closure getStartStep) {
         getStartStepClosure = getStartStep
     }
+
+    public Closure attributeSelector(String selector){
+        return {
+            what ->
+                List<Object> obj = new ArrayList<>()
+                what.results.each { r ->
+                    if(r != null) {
+                        Document doc = Jsoup.parse(r)
+                        if (doc.body().children() != 0) {
+                            Element e = doc.body().child(0)
+                            if (e != null) {
+                                obj.add(e.attr(selector))
+                            }
+                        }
+                    }
+                }
+                what.results = obj;
+        }
+    }
+
+    public Closure regexp(String regexp){
+        return {
+            what ->
+                List<Object> obj = new ArrayList<>()
+                what.results.each { r ->
+                    Pattern p = Pattern.compile(regexp);
+                    Matcher m = p.matcher(r);
+                    while(m.find()){
+                        obj.add(m.group())
+                    }
+                }
+                what.results = obj;
+        }
+    }
+
+    public Closure extractCrawledUrl(){
+        return {
+            what ->
+                List<Object> obj = new ArrayList<>()
+                what.results.each {
+                    obj.add(what.request.url)
+                }
+                what.results = obj
+        }
+    }
+
+    public Closure toFirstElement(){
+        return {
+            what ->
+                what.results = what.results.get(0)
+        }
+    }
+
+    public Closure textCssSelector(String selector){
+        
+    }
+
 
 }
 
@@ -176,7 +250,7 @@ public class CrawlerfileExecutor {
         List<Emitter> emitters = current.step.getOutputs()
         for(Emitter e : emitters){
             StepExecution stepExecution = new StepExecution()
-            stepExecution.step = e.getLastEmitter().sendTo();
+            stepExecution.step = e.getLastEmitter().getEmitted().sendTo();
             stepExecution.input = e.getValue(output)
             res.add(stepExecution)
         }
