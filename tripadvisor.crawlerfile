@@ -1,3 +1,4 @@
+
 start { download "url" }
 download "url" recipe {
     emit page to { parse "continent" }
@@ -7,6 +8,7 @@ parse "continent" recipe {
     cssSelector "a[href~=AllLocations-g\\d+-Places]"
     attributeSelector "href"
     prepend "http://www.tripadvisor.com"
+    apply { printInput it }
     emit link to { download "location" }
 }
 
@@ -18,70 +20,75 @@ parse "location" recipe {
     cssSelector "a[href~=(AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels)]"
     attributeSelector "href"
     prepend "http://www.tripadvisor.com"
+    apply { printInput it }
     emit link to { download "location" }
 
     cssSelector "a[href~=(Hotel_Review-g\\d+-d\\d+-Reviews)]"
     attributeSelector "href"
     prepend "http://www.tripadvisor.com"
+    apply { printInput it }
     emit link to  { download "property" }
 }
 
 download "property" recipe {
-    emit page to {parse "property"}
+    emit page to { parse "property" }
 }
 
 parse "property" recipe {
-    cssSelector "body" }
+    apply { printInput it }
+    cssSelector "body"
+    apply { printInput it }
     emit object fields([
         city : {
             textCssSelector "span[property=addressLocality]"
-            toFirstElement
+            emit value
         },
         country : {
             textCssSelector "a[onClick*=Country] > span"
-            toFirstElement
+            emit value
         },
         continent : { 
-            apply { regexp it,  "Continent\\\\\",\\\\\"([\\w\\s]+)-"}
-            apply { toFirstElement it }
+            regexp  "Continent\\\\\",\\\\\"([\\w\\s]+)-"
+            emit value
         },
         description : {
-            apply { textCssSelector it,  "a[onClick*=Country] > span"}
-            apply { toFirstElement it }
+            textCssSelector "a[onClick*=Country] > span"
+            emit value
         },
         hotelId : {
-            apply { extractCrawledUrl it}
-            apply { regexp it,  "d(\\d+)"}
-            apply { toFirstElement it }            
+            extractCrawledUrl()
+            regexp "d(\\d+)"
+            emit value
         },
         marketName : {
-            apply { textCssSelector it, "b.rank ~ a" }
-            apply { toFirstElement it }            
+            textCssSelector "b.rank ~ a"
+            emit value
         },
         phone : {
-            apply { phoneExtractor it }            
-            apply { toFirstElement it }            
+            apply { phoneExtractor it }
+            emit value
         },
         highlights : {
-            apply { textCssSelector it, ".highlight" }
+            textCssSelector ".highlight"
+            emit array
         }
-    ])
+    ]) to result
 }
 
-def phoneExtractor (input) {
-
+def printInput(input){
+  println input
+  return input
 }
 
-def textCssSelector (input, selector) {
-
+def phoneExtractor (input){
+  println input
+  def lines = input.split("\n")
+  def a = lines[4].substring(3,6)
+  def b = lines[5].substring(3,6)
+  a += lines[6].substring(4,8)
+  b += lines[7].substring(4,7)
+  def c = lines[8].substring(3,4)
+  return a+c+b
 }
 
-def cssSelector( input, selector)  {
-    println "cssSelector input " + input
-    "AllLocation-g123456-c123456-Hotels-Germany"
-}
 
-def prepend( input, value){
-    println "prepend input " + input
-    return value + input
-}
