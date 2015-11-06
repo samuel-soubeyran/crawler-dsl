@@ -3,6 +3,7 @@ import groovy.json.JsonBuilder
 import org.codehaus.groovy.control.CompilerConfiguration
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import sun.misc.BASE64Encoder
 
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -124,19 +125,23 @@ class LinkEmitted extends Emitted {
 class ObjectEmitted extends Emitted {
     EmittedType type = EmittedType.object
     String name = "object"
-    Map<Object, Closure> fields;
+    Map<Object, Parse> fields;
 
     public Emitted fields(Map<Object, Closure> fields) {
-        this.fields = fields
+        this.fields = new LinkedHashMap<>()
+        fields.each {k, v ->
+            Step s = new Parse()
+            v = v.rehydrate(v.delegate, s, v.thisObject)
+            v.call()
+            this.fields.put(k, s)
+
+        }
         return this
     }
 
     public List<Message> build(Message input) {
         Map<Object, Object> object = new LinkedHashMap()
-        this.fields.each { k, v ->
-            Step s = new Parse()
-            v = v.rehydrate(v.delegate, s, v.thisObject)
-            v.call()
+        this.fields.each { k, s ->
             Message sres = s.exec(input)
             def res = new ArrayList()
             List<Emitter> emitters = s.getEmitters()
@@ -238,6 +243,16 @@ abstract class Step {
     }
 
     public void apply(Closure c) {
+        Closure send = c.dehydrate()
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out = new ObjectOutputStream(bos);
+        out.writeObject(send);
+        out.flush();
+        out.close();
+
+        BASE64Encoder encoder = new BASE64Encoder();
+        String serializedClosure = encoder.encode(bos.toByteArray());
+
         internalApply({
             what ->
                 println "external apply emitter action call"
@@ -251,7 +266,7 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }, "groovy", null)
+        }, "groovy", serializedClosure)
     }
 
     public void attributeSelector(String selector) {
@@ -624,7 +639,7 @@ public class CrawlerfileSerializator {
         List<ConditionalStep> nextSteps = new ArrayList<>()
         List<Output> outputs = new ArrayList<>()
         emitters.each { e ->
-            Output output = buildOutput(e)
+            Output output = buildOutput(e, step)
             outputs.add(output)
             Emitted emitted = e.getLastEmitter().emitted
             Step sendTo = emitted.sendTo()
@@ -643,17 +658,18 @@ public class CrawlerfileSerializator {
         return stepObj;
     }
 
-    public Output buildOutput(Emitter e){
+    public Output buildOutput(Emitter e, Step step){
         Output output = new Output()
         Emitted emitted = e.getLastEmitter().emitted
-        Step sendTo = emitted.sendTo()
-        if(sendTo != null){
+
+        if(emitted.sendTo != null){
+            Step sendTo = emitted.sendTo()
             output.name = "output_" + sendTo.getQualifiedName()
         }
         output.type = emitted.name
         output.steps = new ArrayList<>();
         Emitter current = e.getFirstEmitter();
-        ParseStep ps =step.parseSteps.get(current.action)
+        ParseStep ps = step.parseSteps.get(current.action)
         output.steps.add(ps);
         while(current.nextEmitter != null){
             current = current.nextEmitter
@@ -664,12 +680,11 @@ public class CrawlerfileSerializator {
             output.fields = new LinkedHashMap<>()
             emitted.fields.each {
                 k, v ->
-                    Output o = new Output()
-
-                output.fields.put(k,)
+                    Output o = buildOutput(((Parse)v).getEmitters()[0], (Parse)v)
+                    output.fields.put(k, o)
             }
-
         }
+        return output
     }
 }
 

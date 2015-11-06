@@ -1,0 +1,285 @@
+{
+    "start": "download_url",
+    "download_url": {
+        "type": "download",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "parse_continent",
+                "inputSource": "output_parse_continent"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "page",
+                "steps": [
+                    null
+                ],
+                "fields": null,
+                "name": "output_parse_continent"
+            }
+        ]
+    },
+    "parse_continent": {
+        "type": "parse",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "download_location",
+                "inputSource": "output_download_location"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "links",
+                "steps": [
+                    {
+                        "value": "a[href~=AllLocations-g\\d+-Places]",
+                        "name": "cssSelector"
+                    },
+                    {
+                        "value": "href",
+                        "name": "attributeSelector"
+                    },
+                    {
+                        "value": "http://www.tripadvisor.com",
+                        "name": "prepend"
+                    },
+                    {
+                        "value": "rO0ABXNyAB9TY3JpcHQxJF9ydW5fY2xvc3VyZTMkX2Nsb3N1cmU5daAISwW3SsMCAAB4cgATZ3Jv\nb3Z5LmxhbmcuQ2xvc3VyZTygx2YWEmxaAgAISQAJZGlyZWN0aXZlSQAZbWF4aW11bU51bWJlck9m\nUGFyYW1ldGVyc0kAD3Jlc29sdmVTdHJhdGVneUwAA2Jjd3QAPExvcmcvY29kZWhhdXMvZ3Jvb3Z5\nL3J1bnRpbWUvY2FsbHNpdGUvQm9vbGVhbkNsb3N1cmVXcmFwcGVyO0wACGRlbGVnYXRldAASTGph\ndmEvbGFuZy9PYmplY3Q7TAAFb3duZXJxAH4AA1sADnBhcmFtZXRlclR5cGVzdAASW0xqYXZhL2xh\nbmcvQ2xhc3M7TAAKdGhpc09iamVjdHEAfgADeHAAAAAAAAAAAQAAAABwcHB1cgASW0xqYXZhLmxh\nbmcuQ2xhc3M7qxbXrsvNWpkCAAB4cAAAAAF2cgAQamF2YS5sYW5nLk9iamVjdAAAAAAAAAAAAAAA\neHBw",
+                        "name": "groovy"
+                    }
+                ],
+                "fields": null,
+                "name": "output_download_location"
+            }
+        ]
+    },
+    "download_location": {
+        "type": "download",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "parse_location",
+                "inputSource": "output_parse_location"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "page",
+                "steps": [
+                    null
+                ],
+                "fields": null,
+                "name": "output_parse_location"
+            }
+        ]
+    },
+    "parse_location": {
+        "type": "parse",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "download_location",
+                "inputSource": "output_download_location"
+            },
+            {
+                "condition": null,
+                "name": "download_property",
+                "inputSource": "output_download_property"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "links",
+                "steps": [
+                    {
+                        "value": "a[href~=(AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels)]",
+                        "name": "cssSelector"
+                    },
+                    {
+                        "value": "href",
+                        "name": "attributeSelector"
+                    },
+                    {
+                        "value": "http://www.tripadvisor.com",
+                        "name": "prepend"
+                    },
+                    {
+                        "value": "rO0ABXNyACBTY3JpcHQxJF9ydW5fY2xvc3VyZTUkX2Nsb3N1cmUxMrXJNUQyDYQqAgAAeHIAE2dy\nb292eS5sYW5nLkNsb3N1cmU8oMdmFhJsWgIACEkACWRpcmVjdGl2ZUkAGW1heGltdW1OdW1iZXJP\nZlBhcmFtZXRlcnNJAA9yZXNvbHZlU3RyYXRlZ3lMAANiY3d0ADxMb3JnL2NvZGVoYXVzL2dyb292\neS9ydW50aW1lL2NhbGxzaXRlL0Jvb2xlYW5DbG9zdXJlV3JhcHBlcjtMAAhkZWxlZ2F0ZXQAEkxq\nYXZhL2xhbmcvT2JqZWN0O0wABW93bmVycQB+AANbAA5wYXJhbWV0ZXJUeXBlc3QAEltMamF2YS9s\nYW5nL0NsYXNzO0wACnRoaXNPYmplY3RxAH4AA3hwAAAAAAAAAAEAAAAAcHBwdXIAEltMamF2YS5s\nYW5nLkNsYXNzO6sW167LzVqZAgAAeHAAAAABdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAA\nAHhwcA==",
+                        "name": "groovy"
+                    }
+                ],
+                "fields": null,
+                "name": "output_download_location"
+            },
+            {
+                "type": "links",
+                "steps": [
+                    {
+                        "value": "a[href~=(Hotel_Review-g\\d+-d\\d+-Reviews)]",
+                        "name": "cssSelector"
+                    },
+                    {
+                        "value": "href",
+                        "name": "attributeSelector"
+                    },
+                    {
+                        "value": "http://www.tripadvisor.com",
+                        "name": "prepend"
+                    },
+                    {
+                        "value": "rO0ABXNyACBTY3JpcHQxJF9ydW5fY2xvc3VyZTUkX2Nsb3N1cmUxNLvFvbIeZQYBAgAAeHIAE2dy\nb292eS5sYW5nLkNsb3N1cmU8oMdmFhJsWgIACEkACWRpcmVjdGl2ZUkAGW1heGltdW1OdW1iZXJP\nZlBhcmFtZXRlcnNJAA9yZXNvbHZlU3RyYXRlZ3lMAANiY3d0ADxMb3JnL2NvZGVoYXVzL2dyb292\neS9ydW50aW1lL2NhbGxzaXRlL0Jvb2xlYW5DbG9zdXJlV3JhcHBlcjtMAAhkZWxlZ2F0ZXQAEkxq\nYXZhL2xhbmcvT2JqZWN0O0wABW93bmVycQB+AANbAA5wYXJhbWV0ZXJUeXBlc3QAEltMamF2YS9s\nYW5nL0NsYXNzO0wACnRoaXNPYmplY3RxAH4AA3hwAAAAAAAAAAEAAAAAcHBwdXIAEltMamF2YS5s\nYW5nLkNsYXNzO6sW167LzVqZAgAAeHAAAAABdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAA\nAHhwcA==",
+                        "name": "groovy"
+                    }
+                ],
+                "fields": null,
+                "name": "output_download_property"
+            }
+        ]
+    },
+    "download_property": {
+        "type": "download",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "parse_property",
+                "inputSource": "output_parse_property"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "page",
+                "steps": [
+                    null
+                ],
+                "fields": null,
+                "name": "output_parse_property"
+            }
+        ]
+    },
+    "parse_property": {
+        "type": "parse",
+        "nextSteps": [
+            {
+                "condition": null,
+                "name": "result_null",
+                "inputSource": "output_result_null"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "object",
+                "steps": [
+                    {
+                        "value": "rO0ABXNyACBTY3JpcHQxJF9ydW5fY2xvc3VyZTckX2Nsb3N1cmUxN+jMVdZS06F+AgAAeHIAE2dy\nb292eS5sYW5nLkNsb3N1cmU8oMdmFhJsWgIACEkACWRpcmVjdGl2ZUkAGW1heGltdW1OdW1iZXJP\nZlBhcmFtZXRlcnNJAA9yZXNvbHZlU3RyYXRlZ3lMAANiY3d0ADxMb3JnL2NvZGVoYXVzL2dyb292\neS9ydW50aW1lL2NhbGxzaXRlL0Jvb2xlYW5DbG9zdXJlV3JhcHBlcjtMAAhkZWxlZ2F0ZXQAEkxq\nYXZhL2xhbmcvT2JqZWN0O0wABW93bmVycQB+AANbAA5wYXJhbWV0ZXJUeXBlc3QAEltMamF2YS9s\nYW5nL0NsYXNzO0wACnRoaXNPYmplY3RxAH4AA3hwAAAAAAAAAAEAAAAAcHBwdXIAEltMamF2YS5s\nYW5nLkNsYXNzO6sW167LzVqZAgAAeHAAAAABdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAA\nAHhwcA==",
+                        "name": "groovy"
+                    },
+                    {
+                        "value": "body",
+                        "name": "cssSelector"
+                    },
+                    {
+                        "value": "rO0ABXNyACBTY3JpcHQxJF9ydW5fY2xvc3VyZTckX2Nsb3N1cmUxOHvkPUjgYlwiAgAAeHIAE2dy\nb292eS5sYW5nLkNsb3N1cmU8oMdmFhJsWgIACEkACWRpcmVjdGl2ZUkAGW1heGltdW1OdW1iZXJP\nZlBhcmFtZXRlcnNJAA9yZXNvbHZlU3RyYXRlZ3lMAANiY3d0ADxMb3JnL2NvZGVoYXVzL2dyb292\neS9ydW50aW1lL2NhbGxzaXRlL0Jvb2xlYW5DbG9zdXJlV3JhcHBlcjtMAAhkZWxlZ2F0ZXQAEkxq\nYXZhL2xhbmcvT2JqZWN0O0wABW93bmVycQB+AANbAA5wYXJhbWV0ZXJUeXBlc3QAEltMamF2YS9s\nYW5nL0NsYXNzO0wACnRoaXNPYmplY3RxAH4AA3hwAAAAAAAAAAEAAAAAcHBwdXIAEltMamF2YS5s\nYW5nLkNsYXNzO6sW167LzVqZAgAAeHAAAAABdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAA\nAHhwcA==",
+                        "name": "groovy"
+                    }
+                ],
+                "fields": {
+                    "city": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "span[property=addressLocality]",
+                                "name": "textCssSelector"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "country": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "a[onClick*=Country] > span",
+                                "name": "textCssSelector"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "continent": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "Continent\\\\\",\\\\\"([\\w\\s]+)-",
+                                "name": "regexp"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "description": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "a[onClick*=Country] > span",
+                                "name": "textCssSelector"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "hotelId": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": null,
+                                "name": "extractCrawledUrl"
+                            },
+                            {
+                                "value": "d(\\d+)",
+                                "name": "regexp"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "marketName": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "b.rank ~ a",
+                                "name": "textCssSelector"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "phone": {
+                        "type": "value",
+                        "steps": [
+                            {
+                                "value": "rO0ABXNyACtTY3JpcHQxJF9ydW5fY2xvc3VyZTckX2Nsb3N1cmUyNSRfY2xvc3VyZTI3Q6/c9LoB\nl1sCAAB4cgATZ3Jvb3Z5LmxhbmcuQ2xvc3VyZTygx2YWEmxaAgAISQAJZGlyZWN0aXZlSQAZbWF4\naW11bU51bWJlck9mUGFyYW1ldGVyc0kAD3Jlc29sdmVTdHJhdGVneUwAA2Jjd3QAPExvcmcvY29k\nZWhhdXMvZ3Jvb3Z5L3J1bnRpbWUvY2FsbHNpdGUvQm9vbGVhbkNsb3N1cmVXcmFwcGVyO0wACGRl\nbGVnYXRldAASTGphdmEvbGFuZy9PYmplY3Q7TAAFb3duZXJxAH4AA1sADnBhcmFtZXRlclR5cGVz\ndAASW0xqYXZhL2xhbmcvQ2xhc3M7TAAKdGhpc09iamVjdHEAfgADeHAAAAAAAAAAAQAAAABwcHB1\ncgASW0xqYXZhLmxhbmcuQ2xhc3M7qxbXrsvNWpkCAAB4cAAAAAF2cgAQamF2YS5sYW5nLk9iamVj\ndAAAAAAAAAAAAAAAeHBw",
+                                "name": "groovy"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    },
+                    "highlights": {
+                        "type": "array",
+                        "steps": [
+                            {
+                                "value": ".highlight",
+                                "name": "textCssSelector"
+                            }
+                        ],
+                        "fields": null,
+                        "name": null
+                    }
+                },
+                "name": "output_result_null"
+            }
+        ]
+    }
+}
