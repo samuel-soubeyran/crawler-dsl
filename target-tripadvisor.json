@@ -1,0 +1,214 @@
+{
+	"start": "root",
+	"root" : {
+		"type": "download",
+		"outputs": [{
+			"name": "outputParseContinent",
+			"steps": []
+		}],
+		"nextSteps": [
+			{
+				"name" : "parseContinent",
+				"input": "outputParseContinent"
+			}
+		]
+	},
+	"parseContinent" : {
+		"type": "parse",
+		"configs": [{
+			"name": "downloadLocation",
+			"type": "links",
+			"steps": [
+				{
+					"type": "cssSelector",
+					"value": "a[href~=AllLocations-g\\d+-Places]"
+				},
+				{
+					"type": "attributeSelector",
+					"value": "href"
+				},
+				{
+					"type": "prepend",
+					"value": "http://www.tripadvisor.com"
+				}
+			]
+		}],
+		"nextSteps":[
+			{
+				"name": "downloadLocation",
+				"condition": {
+					"type": "source",
+					"value": "downloadLocation"
+				}
+			}
+		]
+	},
+	"downloadLocation": {
+		"type": "download",
+		"nextSteps" : [
+			{
+				"name": "parseLocation"
+			}
+		]
+	},
+	"parseLocation" : {
+		"type": "parse",
+		"configs": [
+			{
+				"name": "1",
+				"type": "links",
+				"steps": [
+					{
+						"type": "cssSelector",
+						"value": "a[href~=(AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels)]",
+					},
+					{
+						"type": "attributeSelector",
+						"value": "href"
+					},
+					{
+						"type": "prepend",
+						"value": "http://www.tripadvisor.com"
+					}
+				]
+			},
+			{
+				"name": "2",
+				"type": "links",
+				"steps": [
+					{
+						"type": "cssSelector",
+						"value": "a[href~=(Hotel_Review-g\\d+-d\\d+-Reviews)]",
+					},
+					{
+						"type": "attributeSelecor",
+						"value": "href"
+					},
+					{
+						"type": "prepend",
+						"value": "http://www.tripadvisor.com"
+					}
+				]
+			}
+		],
+		"nextSteps": [
+			{
+				"name": "downloadLocation",
+				"condition": {
+					"type": "source",
+					"value": "1"
+				}
+			},
+			{
+				"name": "downloadProperty",
+				"condition": {
+					"type": "source",
+					"value": "2"
+				}
+			}
+		]
+	},
+	"downloadProperty": {
+		"type": "download",
+		"nextSteps": [
+			{
+				"name": "parseProperty"
+			}
+		]
+	},
+	"parseProperty": {
+		"type": "parse",
+		"configs": [
+			{
+				"type": "object",
+				"steps":[
+					{
+						"type": "cssSelector",
+						"value": "body"
+					}
+				],
+				"fields": {
+					"city": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "textCssSelector",
+								"value": "span[property=addressLocality]"
+							}
+						]
+					},
+					"country": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "textCssSelector",
+								"value": "a[onClick*=Country] > span"
+							}
+						]
+					},
+					"continent": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "regexp",
+								"value": "Continent\\\\\",\\\\\"([\\w\\s]+)-"
+							}
+						]
+					},
+					"description": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "textCssSelector",
+								"value": "a[onClick*=Country] > span"
+							}
+						]
+					},
+					"hotelId": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "extractCrawledUrl"
+							},
+							{
+								"type": "regexp",
+								"value": "d(\\d+)"
+							}
+						]
+					},
+					"marketName": {
+						"type": "value",
+						"steps": [
+							{
+								"type": "textCssSelector",
+								"value": "b.rank ~ a"
+							}
+						]
+					},
+					"phone":{
+						"type": "value",
+						"steps": [
+							{
+								"type": "groovy",
+								"value": "def lines = input.split(\"\\n\")\ndef a = lines[4].substring(3,6)\ndef b = lines[5].substring(3,6)\na += lines[6].substring(4,8)\nb += lines[7].substring(4,7)\ndef c = lines[8].substring(3,4)\nreturn a+c+b"
+							}
+						]
+					},
+					"postcode": {
+						"type": "textCssSelector",
+						"value": "span[property=postalCode]"
+					},
+					"highlights": {
+						"type": "array",
+						"steps": [
+							{
+								"type": "textCssSelector",
+								"value": ".highlight"
+							}
+						]
+					}
+				}
+			}
+		]
+	}
+}

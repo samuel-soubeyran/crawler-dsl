@@ -1,4 +1,5 @@
 #!/usr/bin/env groovy
+import groovy.json.JsonBuilder
 import org.codehaus.groovy.control.CompilerConfiguration
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -61,9 +62,11 @@ enum EmittedType {
     value, object, array
 }
 
-class Emitted {
+abstract class Emitted {
     Closure sendTo
     EmittedType type = EmittedType.value
+    String name;
+    Condition condition = null
 
     public void to(Closure sendTo) {
         this.sendTo = sendTo
@@ -75,20 +78,43 @@ class Emitted {
         return res
     }
 
+    public Emitted when(String type){
+        if(condition == null){
+            condition = new Condition()
+        }
+        condition.type = type
+        return this
+    }
+    public Emitted match(String value){
+        if(condition == null){
+            throw  new IllegalStateException("No condition type specified, add 'when ... ' before 'match ...")
+        }
+        this.condition.value = value
+        return this
+    }
+
 }
 
 class ArrayEmitted extends Emitted {
     EmittedType type = EmittedType.array
+    String name = "array"
 }
-
+class PageEmitted extends Emitted {
+    String name = "page"
+}
+class ValueEmitted extends Emitted {
+    String name = "value"
+}
 class LinkEmitted extends Emitted {
     EmittedType type = EmittedType.array
+    String name = "links"
     public List<Message> build(Message input) {
         def res = new ArrayList<>()
         input.results.each { i ->
             Message msg = new Message()
             msg.request = new Request()
             msg.request.url = i
+            // TODO check for condition !
             res.add(msg)
         }
         return res
@@ -97,6 +123,7 @@ class LinkEmitted extends Emitted {
 
 class ObjectEmitted extends Emitted {
     EmittedType type = EmittedType.object
+    String name = "object"
     Map<Object, Closure> fields;
 
     public Emitted fields(Map<Object, Closure> fields) {
@@ -112,7 +139,7 @@ class ObjectEmitted extends Emitted {
             v.call()
             Message sres = s.exec(input)
             def res = new ArrayList()
-            List<Emitter> emitters = s.getOutputs()
+            List<Emitter> emitters = s.getEmitters()
             for (Emitter e : emitters) {
                 def msg = e.getFirstEmitter().getValue(sres)
                 Emitted emitted = e.getLastEmitter().emitted;
@@ -133,6 +160,7 @@ class ObjectEmitted extends Emitted {
         Message ret = input.clone()
         ret.results = object
         List<Message> rets = new ArrayList<>()
+        //TODO check for condition ?
         rets.add(ret)
         return rets
     }
@@ -173,15 +201,19 @@ class Emitter {
 abstract class Step {
     String name
     Emitter currentEmitter = null
-    List<Emitter> outputs = new ArrayList<>()
+    List<Emitter> emitters = new ArrayList<>()
+    LinkedHashMap<Closure, ParseStep> parseSteps = new LinkedHashMap<>()
 
+    public String getQualifiedName(){
+        return type + '_' + name;
+    }
     public Emitted emit(Closure emittedFactory) {
         if (currentEmitter == null) {
             currentEmitter = new Emitter()
         }
         def emitted = emittedFactory()
         currentEmitter.emitted = emitted
-        outputs.add(currentEmitter)
+        emitters.add(currentEmitter)
         currentEmitter = null
         return emitted
     }
@@ -191,7 +223,11 @@ abstract class Step {
         c.call()
     }
 
-    public void internalApply(Closure closure) {
+    public void internalApply(Closure closure, String name, String value) {
+        ParseStep ps = new ParseStep()
+        ps.name = name
+        ps.value = value
+        parseSteps.put(closure, ps)
         Emitter e = new Emitter()
         e.action = closure
         if (currentEmitter != null) {
@@ -202,7 +238,7 @@ abstract class Step {
     }
 
     public void apply(Closure c) {
-        internalApply {
+        internalApply({
             what ->
                 println "external apply emitter action call"
                 List<Object> obj = new ArrayList<>()
@@ -215,11 +251,11 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, "groovy", null)
     }
 
     public void attributeSelector(String selector) {
-        internalApply {
+        internalApply({
             what ->
                 println "attributeSelector emitter action closure call with arg : " + selector
                 List<Object> obj = new ArrayList<>()
@@ -238,11 +274,11 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, 'attributeSelector', selector)
     }
 
     public void cssSelector(String selector) {
-        internalApply {
+        internalApply({
             what ->
                 println "cssSelector emitter action closure call with arg : " + selector
                 List<Object> obj = new ArrayList<>()
@@ -257,11 +293,11 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, "cssSelector", selector)
     }
 
     public void regexp(String regexp) {
-        internalApply {
+        internalApply({
             what ->
                 println "regexp emitter action closure call with arg : " + regexp
                 List<Object> obj = new ArrayList<>()
@@ -275,11 +311,11 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, "regexp", regexp)
     }
 
     public void extractCrawledUrl() {
-        internalApply {
+        internalApply({
             what ->
                 println "extractCrawledUrl emitter action closure call "
                 List<Object> obj = new ArrayList<>()
@@ -290,21 +326,21 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, "extractCrawledUrl", null)
     }
 
     public void toFirstElement() {
-        internalApply {
+        internalApply({
             what ->
                 println "toFirstElement emitter action closure call"
                 def ret = ((Message) what).clone()
                 ret.results = what.results.get(0)
                 return ret
-        }
+        }, "toFirstElement", null)
     }
 
     public void textCssSelector(String selector) {
-        internalApply {
+        internalApply({
             what ->
                 println "textCssSelector emitter action closure call with arg : " + selector
                 List<Object> obj = new ArrayList<>()
@@ -319,11 +355,11 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        }, "textCssSelector", selector)
     }
 
     public void prepend(String pre) {
-        internalApply {
+        internalApply({
             what ->
                 println "prepend emitter action closure call with arg : " + pre
                 List<Object> obj = new ArrayList<>()
@@ -335,7 +371,7 @@ abstract class Step {
                 def ret = ((Message) what).clone()
                 ret.results = obj
                 return ret
-        }
+        },"prepend", pre)
     }
 
 
@@ -343,7 +379,7 @@ abstract class Step {
 }
 
 class Download extends Step {
-
+    String type = 'download'
     public Message exec(Message input) {
         println "downloading url " + input.request.url
         Message m = (Message) input;
@@ -355,6 +391,7 @@ class Download extends Step {
 }
 
 class Parse extends Step {
+    String type = 'parse'
     public Message exec(Message input) {
         println "=====parsing content ========\n" + input.response.content +"\n\n=================================\n"
         List<Object> array = new ArrayList()
@@ -366,6 +403,8 @@ class Parse extends Step {
 }
 
 class Result extends Step {
+    String type = 'result'
+    String name = ''
     public List<Object> results = new ArrayList<>()
     public Message exec(Message input){
         results.addAll(input.results)
@@ -376,15 +415,16 @@ class Result extends Step {
 abstract class Crawlerfile extends Script {
     LinkedHashMap<String, Object> download = new LinkedHashMap<>()
     LinkedHashMap<String, Object> parse = new LinkedHashMap<>()
+
     Step results = new Result()
 
 
     def getStartStepClosure = {}
     def link = { return new LinkEmitted() }
-    def page = { return new Emitted() }
+    def page = { return new PageEmitted() }
     def array = { return new ArrayEmitted() }
     def object = { return new ObjectEmitted() }
-    def value = { return new Emitted() }
+    def value = { return new ValueEmitted() }
 
     public Step getStartStep() {
         return getStartStepClosure.call()
@@ -423,7 +463,7 @@ abstract class Crawlerfile extends Script {
 def crawlerConfig = new CompilerConfiguration();
 crawlerConfig.scriptBaseClass = Crawlerfile.class.getName();
 
-def shell = new GroovyShell(this.class.classLoader, crawlerConfig)
+def shell = new GroovyShell(main.class.classLoader, crawlerConfig)
 
 def crawlerfileContents = new File(crawlerfilename).getText('UTF-8')
 
@@ -447,6 +487,8 @@ public class CrawlerfileExecutor {
     public LinkedList<StepExecution> future = new ArrayList<>();
     public LinkedList<StepExecution> nsteps = new LinkedList<>()
 
+    public String regexp = 'regexp' //used for type of conditional step
+
     public void run(Crawlerfile crawlerfile, Object crawlerStartInput) {
         StepExecution exec = new StepExecution()
         exec.input = crawlerStartInput
@@ -463,7 +505,7 @@ public class CrawlerfileExecutor {
             return new ArrayList<StepExecution>();
         }
         def res = new ArrayList()
-        List<Emitter> emitters = current.step.getOutputs()
+        List<Emitter> emitters = current.step.getEmitters()
         for (Emitter e : emitters) {
             List<StepExecution> stepExecutions = new ArrayList<>()
             Message msg = e.getFirstEmitter().getValue(output)
@@ -522,4 +564,117 @@ public class CrawlerfileExecutor {
     }
 }
 
-new CrawlerfileExecutor().run(crawlerfile, crawlerStartInput)
+public class ConditionalStep {
+    String name
+    String inputSource
+    Condition condition
+
+}
+public class Condition {
+    String type
+    String value
+}
+
+public class Output {
+    String name
+    String type
+    List<Step> steps
+    Map<String, Output> fields
+}
+public class ParseStep {
+    String name
+    Object value
+}
+
+public class CrawlerfileSerializator {
+     Map<String, Object> config;
+     Crawlerfile crawlerfile;
+
+    public CrawlerfileSerializator build(Crawlerfile crawlerfile){
+        this.config = new LinkedHashMap<>()
+        this.crawlerfile = crawlerfile
+        Step startStep = crawlerfile.getStartStep()
+        config.put("start", startStep.getQualifiedName())
+
+        LinkedList<Step> steps = new LinkedList<>()
+        steps.push(startStep);
+        while(steps.size()>0){
+            Step step = steps.pop()
+            List<Emitter> emitters = new ArrayList<>()
+            step.getEmitters().each { o ->
+                Step ns = o.emitted.sendTo()
+                if(config.get(ns.getQualifiedName()) == null && !ns.getType().equals('result')){
+                    steps.push(ns)
+                }
+                emitters.push(o.firstEmitter)
+            }
+            Map<String, Object> bstep =buildStep(step, emitters)
+            config.put(step.getQualifiedName(), bstep)
+        }
+        return this;
+    }
+
+    public String toString(){
+        return new JsonBuilder( this.config ).toPrettyString()
+    }
+
+    public Map<String, Object> buildStep( Step step, List<Emitter> emitters){
+        Map<String, Object> stepObj = new LinkedHashMap<>()
+        stepObj.put("type", step.type)
+        List<ConditionalStep> nextSteps = new ArrayList<>()
+        List<Output> outputs = new ArrayList<>()
+        emitters.each { e ->
+            Output output = buildOutput(e)
+            outputs.add(output)
+            Emitted emitted = e.getLastEmitter().emitted
+            Step sendTo = emitted.sendTo()
+
+            ConditionalStep cs = new ConditionalStep()
+            cs.condition = emitted.condition
+            cs.inputSource = output.name
+            if(sendTo != null){
+                cs.name = sendTo.getQualifiedName()
+            }
+            nextSteps.add(cs)
+        }
+
+        stepObj.put("nextSteps",nextSteps)
+        stepObj.put("outputs", outputs)
+        return stepObj;
+    }
+
+    public Output buildOutput(Emitter e){
+        Output output = new Output()
+        Emitted emitted = e.getLastEmitter().emitted
+        Step sendTo = emitted.sendTo()
+        if(sendTo != null){
+            output.name = "output_" + sendTo.getQualifiedName()
+        }
+        output.type = emitted.name
+        output.steps = new ArrayList<>();
+        Emitter current = e.getFirstEmitter();
+        ParseStep ps =step.parseSteps.get(current.action)
+        output.steps.add(ps);
+        while(current.nextEmitter != null){
+            current = current.nextEmitter
+            ps = step.parseSteps.get(current.action)
+            output.steps.add(ps)
+        }
+        if(emitted.type.equals(EmittedType.object) && emitted.fields != null && emitted.fields.size() > 0){
+            output.fields = new LinkedHashMap<>()
+            emitted.fields.each {
+                k, v ->
+                    Output o = new Output()
+
+                output.fields.put(k,)
+            }
+
+        }
+    }
+}
+
+
+
+println new CrawlerfileSerializator().build(crawlerfile).toString()
+
+//new CrawlerfileExecutor().run(crawlerfile, crawlerStartInput)

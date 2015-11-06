@@ -1,0 +1,264 @@
+{
+  "start":"rootStep",
+  "rootStep":{
+    "stepType":"download",
+    "nextSteps":[
+      {"name": "parseContinent"}
+    ]
+  },
+  "parseContinent":{
+    "stepType":"parse",
+    "taskType":"links",
+    "parseTask": {
+      "rootFieldConfig": {
+        "extractType": "list",
+        "listStep": {
+          "limit": 10,
+          "type": "regexp",
+          "value": "AllLocations-g\\d+-Places"
+        },
+        "children": [
+          {
+            "name": "link",
+            "steps": [
+              {
+                "type": "prepend",
+                "value": "http://www.tripadvisor.com/"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "nextSteps":[
+      { "name": "downloadLocation" }
+    ]
+  },
+  "downloadLocation":{
+    "stepType":"download",
+    "nextSteps":[
+      { "name": "parseLocation" }
+    ]
+  },
+  "parseLocation":{
+    "stepType":"parse",
+    "taskType": "links",
+    "parseTask":{
+      "rootFieldConfig": {
+        "extractType": "list",
+        "listStep": {
+          "type": "cssSelector",
+          "value": "a[href~=(AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels|Hotel_Review-g\\d+-d\\d+-Reviews)]"
+        },
+        "children": [
+          {
+            "name": "link",
+            "steps": [
+              {
+                "type": "attributeSelector",
+                "value": "href"
+              },
+              {
+                "type": "prepend",
+                "value": "http://www.tripadvisor.com/"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "nextSteps":[
+      {
+        "name":"downloadLocation",
+        "condition":{
+          "type":"regexp",
+          "value":"AllLocations-g\\d+-c\\d+-(o\\d+-)?Hotels"
+        }
+      },
+      {
+        "name":"downloadProperty",
+        "condition":{
+          "type":"regexp",
+          "value":"Hotel_Review-g\\d+-d\\d+-Reviews"
+        }
+      }
+    ]
+  },
+  "downloadProperty":{
+    "stepType":"download",
+    "nextSteps":[
+      {"name": "parseProperty"}
+    ]
+  },
+  "parseProperty":{
+    "stepType":"parse",
+    "taskType": "objects",
+    "parseTask": {
+      "rootFieldConfig": {
+        "extractType": "object",
+        "steps": [{
+          "type": "cssSelector",
+          "value": "body"
+        }],
+        "children": [
+          {
+            "name": "city",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "span[property=addressLocality]"
+              }
+            ]
+          },
+          {
+            "name": "country",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "a[onClick*=Country] > span"
+              }
+            ]
+          },
+          {
+            "name": "continent",
+            "steps": [
+              {
+                "type": "regexpFirstGroup",
+                "value": "Continent\\\\\",\\\\\"([\\w\\s]+)-"
+              }
+            ]
+          },
+          {
+            "name": "description",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "span.tabs_descriptive_text"
+              }
+            ]
+          },
+          {
+            "name": "highlights",
+            "extractType": "list",
+            "listStep": {
+              "type": "cssSelector",
+              "value": "#AMENITIES_TAB .property_tags li"
+            },
+            "steps": [
+              {
+                "type": "removeHtmlTags"
+              }
+            ]
+          },
+          {
+            "name": "hotelId",
+            "steps": [
+              {
+                "type": "extractCrawledUrl"
+              },
+              {
+                "type": "regexpFirstGroup",
+                "value": "d(\\d+)"
+              }
+            ]
+          },
+          {
+            "name": "marketName",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "b.rank ~ a"
+              }
+            ]
+          },
+          {
+            "name": "marketRank",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "b.rank"
+              },
+              {
+                "type": "regexp",
+                "value": "\\d+"
+              }
+            ]
+          },
+          {
+            "name": "marketSize",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": ".popRanking"
+              },
+              {
+                "type": "regexpFirstGroup",
+                "value": "of\\s(\\d+)"
+              }
+            ]
+          },
+          {
+            "name": "marketUrl",
+            "steps": [
+              {
+                "type": "cssSelector",
+                "value": "b.rank ~ a"
+              },
+              {
+                "type": "attributeSelector",
+                "value": "href"
+              },
+              {
+                "type": "prepend",
+                "value": "http://www.tripadvisor.com"
+              }
+            ]
+          },
+          {
+            "name": "name",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "#HEADING"
+              }
+            ]
+          },
+          {
+            "name": "nameUrl",
+            "steps": [
+              {
+                "type": "extractCrawledUrl"
+              },
+              {
+                "type": "regexpFirstGroup",
+                "value": "Reviews-(.+)-"
+              }
+            ]
+          },
+          {
+            "name": "phone",
+            "steps": [
+              {
+                "type": "cssSelector",
+                "value": ".grayPhone + div > script"
+              },
+              {
+                "type": "groovyScript",
+                "value": "def lines = input.split(\"\\n\")\ndef a = lines[4].substring(3,6)\ndef b = lines[5].substring(3,6)\na += lines[6].substring(4,8)\nb += lines[7].substring(4,7)\ndef c = lines[8].substring(3,4)\nreturn a+c+b"
+              }
+            ]
+          },
+          {
+            "name": "postcode",
+            "steps": [
+              {
+                "type": "textCssSelector",
+                "value": "span[property=postalCode]"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
